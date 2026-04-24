@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -27,6 +28,10 @@ import (
 )
 
 var githubClient *github.Client
+
+func isIPv4(n *net.IPNet) bool {
+	return n.IP.To4() != nil
+}
 
 func init() {
 	accessToken, loaded := os.LookupEnv("ACCESS_TOKEN")
@@ -164,6 +169,75 @@ func write(writer *mmdbwriter.Tree, dataMap map[string][]*net.IPNet, output stri
 	return err
 }
 
+func writeRulesetFile(outputDir, code string, ipNets []*net.IPNet) error {
+	var headlessRule option.DefaultHeadlessRule
+	headlessRule.IPCIDR = make([]string, 0, len(ipNets))
+	fmt.Printf("code %v, count %v\n", code, len(ipNets))
+	for _, cidr := range ipNets {
+		headlessRule.IPCIDR = append(headlessRule.IPCIDR, cidr.String())
+	}
+	var plainRuleSet option.PlainRuleSet
+	plainRuleSet.Rules = []option.HeadlessRule{
+		{
+			Type:           C.RuleTypeDefault,
+			DefaultOptions: headlessRule,
+		},
+	}
+
+	// srs
+	srsPath, _ := filepath.Abs(filepath.Join(
+		outputDir, fmt.Sprintf("geoip-%v.srs", code)))
+	os.Stderr.WriteString("write " + srsPath + "\n")
+	fileRulesetSRS, err := os.Create(srsPath)
+	defer fileRulesetSRS.Close()
+	if err != nil {
+		return err
+	}
+	err = srs.Write(fileRulesetSRS, plainRuleSet)
+	if err != nil {
+		return err
+	}
+
+	// json
+	srsPath, _ = filepath.Abs(filepath.Join(
+		outputDir, fmt.Sprintf("geoip-%v.json", code)))
+	os.Stderr.WriteString("write " + srsPath + "\n")
+	fileRulesetJSON, err := os.Create(srsPath)
+	defer fileRulesetJSON.Close()
+	if err != nil {
+		return err
+	}
+	je := json.NewEncoder(fileRulesetJSON)
+	je.SetEscapeHTML(false)
+	je.SetIndent("", "    ")
+	err = je.Encode(plainRuleSet)
+	if err != nil {
+		return err
+	}
+
+	// list
+	srsPath, _ = filepath.Abs(filepath.Join(
+		outputDir, fmt.Sprintf("geoip-%v.list", code)))
+	os.Stderr.WriteString("write " + srsPath + "\n")
+	fileRulesetList, err := os.Create(srsPath)
+	defer fileRulesetList.Close()
+	if err != nil {
+		return err
+	}
+	for _, cidr := range ipNets {
+		if isIPv4(cidr) {
+			_, err = fileRulesetList.WriteString(fmt.Sprintf("IP-CIDR,%v,no-resolve\n", cidr))
+		} else {
+			_, err = fileRulesetList.WriteString(fmt.Sprintf("IP-CIDR6,%v,no-resolve\n", cidr))
+		}
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func release(source string, destination string, output string, ruleSetOutput string) error {
 	sourceRelease, err := fetch(source)
 	if err != nil {
@@ -216,46 +290,11 @@ func release(source string, destination string, output string, ruleSetOutput str
 		return err
 	}
 	for countryCode, ipNets := range countryMap {
-		var headlessRule option.DefaultHeadlessRule
-		headlessRule.IPCIDR = make([]string, 0, len(ipNets))
-		for _, cidr := range ipNets {
-			headlessRule.IPCIDR = append(headlessRule.IPCIDR, cidr.String())
-		}
-		var plainRuleSet option.PlainRuleSet
-		plainRuleSet.Rules = []option.HeadlessRule{
-			{
-				Type:           C.RuleTypeDefault,
-				DefaultOptions: headlessRule,
-			},
-		}
-		srsPath, _ := filepath.Abs(filepath.Join(ruleSetOutput, "geoip-"+countryCode+".srs"))
-		os.Stderr.WriteString("write " + srsPath + "\n")
-		outputRuleSet, err := os.Create(srsPath)
+		err = writeRulesetFile(ruleSetOutput, countryCode, ipNets)
 		if err != nil {
 			return err
 		}
-		err = srs.Write(outputRuleSet, plainRuleSet)
-		if err != nil {
-			outputRuleSet.Close()
-			return err
-		}
-		outputRuleSet.Close()
-
-		srsPath, _ = filepath.Abs(filepath.Join(ruleSetOutput, "geoip-"+countryCode+".json"))
-		os.Stderr.WriteString("write " + srsPath + "\n")
-		outputRuleSet, err = os.Create(srsPath)
-		if err != nil {
-			return err
-		}
-		je := json.NewEncoder(outputRuleSet)
-		je.SetEscapeHTML(false)
-		je.SetIndent("", "    ")
-		err = je.Encode(plainRuleSet)
-		if err != nil {
-			outputRuleSet.Close()
-			return err
-		}
-		outputRuleSet.Close()
+		break
 	}
 
 	setActionOutput("tag", *sourceRelease.Name)
@@ -269,7 +308,7 @@ func setActionOutput(name string, content string) {
 func main() {
 	err := release(
 		"Loyalsoldier/geoip",
-		"se1jaku/sing-geoip",
+		"se1jaku/ruleset-collections",
 		"geoip.db",
 		"rule-set",
 	)

@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -170,6 +171,75 @@ func parse(vGeositeData []byte) (map[string][]geosite.Item, error) {
 	return domainMap, nil
 }
 
+func writeRulesetFile(outputDir, code string, domains []geosite.Item) error {
+	var headlessRule option.DefaultHeadlessRule
+	defaultRule := geosite.Compile(domains)
+	headlessRule.Domain = defaultRule.Domain
+	headlessRule.DomainSuffix = defaultRule.DomainSuffix
+	headlessRule.DomainKeyword = defaultRule.DomainKeyword
+	headlessRule.DomainRegex = defaultRule.DomainRegex
+	var plainRuleSet option.PlainRuleSet
+	plainRuleSet.Rules = []option.HeadlessRule{
+		{
+			Type:           C.RuleTypeDefault,
+			DefaultOptions: headlessRule,
+		},
+	}
+
+	// srs
+	srsPath, _ := filepath.Abs(filepath.Join(outputDir, "geosite-"+code+".srs"))
+	os.Stderr.WriteString("write " + srsPath + "\n")
+	fileRulesetSRS, err := os.Create(srsPath)
+	defer fileRulesetSRS.Close()
+	if err != nil {
+		return err
+	}
+	err = srs.Write(fileRulesetSRS, plainRuleSet)
+	if err != nil {
+		return err
+	}
+
+	// json
+	srsPath, _ = filepath.Abs(filepath.Join(outputDir, "geosite-"+code+".json"))
+	os.Stderr.WriteString("write " + srsPath + "\n")
+	fileRulesetJSON, err := os.Create(srsPath)
+	defer fileRulesetJSON.Close()
+	if err != nil {
+		return err
+	}
+	je := json.NewEncoder(fileRulesetJSON)
+	je.SetEscapeHTML(false)
+	je.SetIndent("", "    ")
+	err = je.Encode(plainRuleSet)
+	if err != nil {
+		return err
+	}
+
+	// list
+	srsPath, _ = filepath.Abs(filepath.Join(outputDir, fmt.Sprintf("geosite-%v.list", code)))
+	os.Stderr.WriteString("write " + srsPath + "\n")
+	fileRulesetList, err := os.Create(srsPath)
+	defer fileRulesetList.Close()
+	if err != nil {
+		return err
+	}
+	for _, domain := range domains {
+		switch domain.Type {
+		case geosite.RuleTypeDomain:
+			fileRulesetList.WriteString(fmt.Sprintf("DOMAIN,%v\n", domain.Value))
+		case geosite.RuleTypeDomainSuffix:
+			fileRulesetList.WriteString(fmt.Sprintf(
+				"DOMAIN-SUFFIX,%v\n", strings.TrimLeft(domain.Value, ".")))
+		case geosite.RuleTypeDomainKeyword:
+			log.Warn("domain keyword not supported for list [%v], keyword %v", code, domain.Value)
+		case geosite.RuleTypeDomainRegex:
+			log.Warn("domain regex not supported for list [%v], regex %v", code, domain.Value)
+		}
+
+	}
+	return nil
+}
+
 func generate(release *github.RepositoryRelease, output string, cnOutput string, ruleSetOutput string) error {
 	vData, err := download(release)
 	if err != nil {
@@ -214,47 +284,10 @@ func generate(release *github.RepositoryRelease, output string, cnOutput string,
 		return err
 	}
 	for code, domains := range domainMap {
-		var headlessRule option.DefaultHeadlessRule
-		defaultRule := geosite.Compile(domains)
-		headlessRule.Domain = defaultRule.Domain
-		headlessRule.DomainSuffix = defaultRule.DomainSuffix
-		headlessRule.DomainKeyword = defaultRule.DomainKeyword
-		headlessRule.DomainRegex = defaultRule.DomainRegex
-		var plainRuleSet option.PlainRuleSet
-		plainRuleSet.Rules = []option.HeadlessRule{
-			{
-				Type:           C.RuleTypeDefault,
-				DefaultOptions: headlessRule,
-			},
-		}
-		srsPath, _ := filepath.Abs(filepath.Join(ruleSetOutput, "geosite-"+code+".srs"))
-		os.Stderr.WriteString("write " + srsPath + "\n")
-		outputRuleSet, err := os.Create(srsPath)
+		err = writeRulesetFile(ruleSetOutput, code, domains)
 		if err != nil {
 			return err
 		}
-		err = srs.Write(outputRuleSet, plainRuleSet)
-		if err != nil {
-			outputRuleSet.Close()
-			return err
-		}
-		outputRuleSet.Close()
-
-		srsPath, _ = filepath.Abs(filepath.Join(ruleSetOutput, "geosite-"+code+".json"))
-		os.Stderr.WriteString("write " + srsPath + "\n")
-		outputRuleSet, err = os.Create(srsPath)
-		if err != nil {
-			return err
-		}
-		je := json.NewEncoder(outputRuleSet)
-		je.SetEscapeHTML(false)
-		je.SetIndent("", "    ")
-		err = je.Encode(plainRuleSet)
-		if err != nil {
-			outputRuleSet.Close()
-			return err
-		}
-		outputRuleSet.Close()
 	}
 	return nil
 }
@@ -289,7 +322,7 @@ func release(source string, destination string, output string, cnOutput string, 
 func main() {
 	err := release(
 		"Loyalsoldier/v2ray-rules-dat",
-		"se1jaku/sing-geosite",
+		"se1jaku/ruleset-collections",
 		"geosite.db",
 		"geosite-cn.db",
 		"rule-set",
