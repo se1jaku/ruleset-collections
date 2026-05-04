@@ -1,0 +1,13 @@
+DOMAIN,impala-media-production.s3.amazonaws.com
+DOMAIN,sc-cdn.net
+DOMAIN-SUFFIX,sc-cdn.net
+DOMAIN,snap-dev.net
+DOMAIN-SUFFIX,snap-dev.net
+DOMAIN,snap.com
+DOMAIN-SUFFIX,snap.com
+DOMAIN,snapchat.com
+DOMAIN-SUFFIX,snapchat.com
+DOMAIN,snapkit.co
+DOMAIN-SUFFIX,snapkit.co
+DOMAIN,snapads.com
+DOMAIN-SUFFIX,snapads.com

@@ -1,0 +1,24 @@
+{
+    "rules": [
+        {
+            "domain": [
+                "eligens.cl",
+                "eligens.io",
+                "genetic-technologies.am",
+                "genotek.am",
+                "genotek.health",
+                "genotek.ru",
+                "eligens.com.br"
+            ],
+            "domain_suffix": [
+                ".eligens.cl",
+                ".eligens.io",
+                ".genetic-technologies.am",
+                ".genotek.am",
+                ".genotek.health",
+                ".genotek.ru",
+                ".eligens.com.br"
+            ]
+        }
+    ]
+}
