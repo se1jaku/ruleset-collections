@@ -294,7 +294,6 @@ func release(source string, destination string, output string, ruleSetOutput str
 		if err != nil {
 			return err
 		}
-		break
 	}
 
 	setActionOutput("tag", *sourceRelease.Name)
