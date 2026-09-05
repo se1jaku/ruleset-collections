@@ -1,0 +1,16 @@
+DOMAIN,consul.io
+DOMAIN-SUFFIX,consul.io
+DOMAIN,hashicorp.com
+DOMAIN-SUFFIX,hashicorp.com
+DOMAIN,nomadproject.io
+DOMAIN-SUFFIX,nomadproject.io
+DOMAIN,packer.io
+DOMAIN-SUFFIX,packer.io
+DOMAIN,terraform.io
+DOMAIN-SUFFIX,terraform.io
+DOMAIN,vagrantcloud.com
+DOMAIN-SUFFIX,vagrantcloud.com
+DOMAIN,vagrantup.com
+DOMAIN-SUFFIX,vagrantup.com
+DOMAIN,vaultproject.io
+DOMAIN-SUFFIX,vaultproject.io
