@@ -1,0 +1,16 @@
+DOMAIN,link.com
+DOMAIN-SUFFIX,link.com
+DOMAIN,stripe-terminal-local-reader.net
+DOMAIN-SUFFIX,stripe-terminal-local-reader.net
+DOMAIN,stripe.com
+DOMAIN-SUFFIX,stripe.com
+DOMAIN,stripe.dev
+DOMAIN-SUFFIX,stripe.dev
+DOMAIN,stripe.events
+DOMAIN-SUFFIX,stripe.events
+DOMAIN,stripe.global
+DOMAIN-SUFFIX,stripe.global
+DOMAIN,stripe.network
+DOMAIN-SUFFIX,stripe.network
+DOMAIN,stripecdn.com
+DOMAIN-SUFFIX,stripecdn.com
